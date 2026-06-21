@@ -118,8 +118,112 @@ html, body, #root {
   50% { opacity: 0.6; }
 }
 
+@keyframes faultBlink {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.7), 0 4px 12px rgba(255, 77, 79, 0.3);
+    border-color: #ff4d4f;
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 77, 79, 0), 0 4px 12px rgba(255, 77, 79, 0.3);
+    border-color: #cf1322;
+  }
+}
+
 .status-delivering {
   animation: pulse 1.5s ease-in-out infinite;
+}
+
+.status-fault {
+  animation: faultBlink 1.2s ease-in-out infinite;
+  border: 2px solid #ff4d4f !important;
+  background: linear-gradient(135deg, #fff2f0 0%, #ffffff 100%);
+}
+
+.status-fault .ant-card-body {
+  background: transparent;
+}
+
+.fault-alert-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  margin: -24px -24px 24px -24px;
+  padding: 16px 24px;
+  background: linear-gradient(90deg, #cf1322 0%, #ff4d4f 50%, #cf1322 100%);
+  background-size: 200% 100%;
+  animation: alertShimmer 2s linear infinite;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  box-shadow: 0 4px 16px rgba(207, 19, 34, 0.4);
+}
+
+@keyframes alertShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.fault-alert-bar .alert-icon {
+  font-size: 24px;
+  animation: shake 0.5s ease-in-out infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-10deg); }
+  75% { transform: rotate(10deg); }
+}
+
+.fault-alert-bar .alert-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fault-alert-bar .alert-title {
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fault-alert-bar .alert-detail {
+  font-size: 13px;
+  opacity: 0.95;
+}
+
+.fault-alert-bar .alert-confirm-btn {
+  background: white;
+  color: #cf1322;
+  border: none;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.fault-alert-bar .alert-confirm-btn:hover {
+  background: #fff2f0;
+  transform: scale(1.05);
+}
+
+.fault-alert-bar .alert-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 8px;
+  background: white;
+  color: #cf1322;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .ws-status {

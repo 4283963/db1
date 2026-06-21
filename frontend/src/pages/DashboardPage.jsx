@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react'
-import { message, Spin, Select, Row, Col, Statistic } from 'antd'
-import { CarOutlined, ExclamationCircleOutlined, ThunderboltOutlined, CoffeeOutlined } from '@ant-design/icons'
+import { useState, useEffect, useMemo, useRef } from 'react'
+import { message, Spin, Select, Row, Col, Statistic, Button } from 'antd'
+import { CarOutlined, ExclamationCircleOutlined, ThunderboltOutlined, CoffeeOutlined, WarningOutlined } from '@ant-design/icons'
 import CartCard from '../components/CartCard.jsx'
 import { cartApi } from '../services/api.js'
 import { useCartWebSocket } from '../hooks/useCartWebSocket.js'
 import { CartStatus } from '../types'
+import dayjs from 'dayjs'
 
 const filterOptions = [
   { label: '全部小车', value: 'ALL' },
@@ -18,13 +19,50 @@ export default function DashboardPage() {
   const [carts, setCarts] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterStatus, setFilterStatus] = useState('ALL')
+  const [unacknowledgedFaults, setUnacknowledgedFaults] = useState([])
+  const prevStatusRef = useRef({})
   const { cartUpdates, isConnected } = useCartWebSocket()
+
+  const detectNewFaults = (updatedCarts) => {
+    const prevStatus = prevStatusRef.current
+    updatedCarts.forEach(cart => {
+      const oldStatus = prevStatus[cart.id]
+      const newStatus = cart.status
+      if (newStatus === CartStatus.FAULT && oldStatus && oldStatus !== CartStatus.FAULT) {
+        const faultInfo = {
+          cartId: cart.id,
+          cartCode: cart.cartCode,
+          cartName: cart.name,
+          locationName: cart.currentLocation?.name || '未知位置',
+          locationCode: cart.currentLocation?.code || '',
+          remark: cart.remark || '',
+          faultTime: cart.lastUpdate || new Date().toISOString(),
+          acknowledged: false,
+          id: `${cart.id}-${Date.now()}`
+        }
+        setUnacknowledgedFaults(prev => {
+          const exists = prev.find(f => f.cartId === cart.id && !f.acknowledged)
+          if (exists) return prev
+          message.warning(`⚠️ ${cart.name} 在 ${faultInfo.locationName} 发生故障！`, 5)
+          return [...prev, faultInfo]
+        })
+      }
+      if (newStatus !== CartStatus.FAULT) {
+        setUnacknowledgedFaults(prev =>
+          prev.filter(f => f.cartId !== cart.id || f.acknowledged)
+        )
+      }
+      prevStatus[cart.id] = newStatus
+    })
+  }
 
   const loadCarts = async () => {
     try {
       setLoading(true)
       const data = await cartApi.getAll()
-      setCarts(data || [])
+      const cartsData = data || []
+      detectNewFaults(cartsData)
+      setCarts(cartsData)
     } catch (err) {
       message.error('加载小车数据失败: ' + err.message)
     } finally {
@@ -40,15 +78,35 @@ export default function DashboardPage() {
     if (cartUpdates) {
       setCarts(prev => {
         const idx = prev.findIndex(c => c.id === cartUpdates.id)
+        let updated
         if (idx >= 0) {
-          const updated = [...prev]
+          updated = [...prev]
           updated[idx] = cartUpdates
-          return updated
+        } else {
+          updated = [...prev, cartUpdates]
         }
-        return [...prev, cartUpdates]
+        detectNewFaults(updated)
+        return updated
       })
     }
   }, [cartUpdates])
+
+  const handleAcknowledgeFault = (faultId) => {
+    setUnacknowledgedFaults(prev =>
+      prev.filter(f => f.id !== faultId)
+    )
+    message.success('已确认告警')
+  }
+
+  const handleAcknowledgeAll = () => {
+    setUnacknowledgedFaults([])
+    message.success('已确认所有告警')
+  }
+
+  const activeUnacknowledged = unacknowledgedFaults.filter(f => {
+    const cart = carts.find(c => c.id === f.cartId)
+    return cart && cart.status === CartStatus.FAULT
+  })
 
   const stats = useMemo(() => {
     return {
@@ -67,6 +125,64 @@ export default function DashboardPage() {
 
   return (
     <div className="page-container">
+      {activeUnacknowledged.length > 0 && (
+        <div className="fault-alert-bar">
+          <div className="alert-icon">🚨</div>
+          <div className="alert-content">
+            <div className="alert-title">
+              <WarningOutlined />
+              严重故障告警
+              <span className="alert-count-badge">{activeUnacknowledged.length}</span>
+            </div>
+            {activeUnacknowledged.length === 1 ? (
+              <div className="alert-detail">
+                小车 <strong>{activeUnacknowledged[0].cartName}</strong> ({activeUnacknowledged[0].cartCode})
+                在 <strong>{activeUnacknowledged[0].locationName}</strong> 发生故障
+                {activeUnacknowledged[0].remark && ` - ${activeUnacknowledged[0].remark}`}
+                ，发生于 {dayjs(activeUnacknowledged[0].faultTime).format('HH:mm:ss')}
+              </div>
+            ) : (
+              <div className="alert-detail">
+                共 {activeUnacknowledged.length} 辆小车发生故障：
+                {activeUnacknowledged.map((f, i) => (
+                  <span key={f.id}>
+                    {i > 0 ? '、' : ''}
+                    <strong>{f.cartName}</strong> @ {f.locationName}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {activeUnacknowledged.length > 1 && (
+              <button
+                className="alert-confirm-btn"
+                onClick={handleAcknowledgeAll}
+              >
+                全部确认
+              </button>
+            )}
+            {activeUnacknowledged.length === 1 && (
+              <button
+                className="alert-confirm-btn"
+                onClick={() => handleAcknowledgeFault(activeUnacknowledged[0].id)}
+              >
+                确认已知晓
+              </button>
+            )}
+            {activeUnacknowledged.length > 1 && activeUnacknowledged.map(fault => (
+              <button
+                key={fault.id}
+                className="alert-confirm-btn"
+                onClick={() => handleAcknowledgeFault(fault.id)}
+                style={{ display: 'none' }}
+              >
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div className="ws-status">
           <span className={`ws-dot ${isConnected ? '' : 'disconnected'}`}></span>

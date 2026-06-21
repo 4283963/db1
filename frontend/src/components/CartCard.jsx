@@ -34,7 +34,7 @@ export default function CartCard({ cart }) {
 
   return (
     <Card
-      className={`cart-card ${cart.status === CartStatus.DELIVERING ? 'status-delivering' : ''}`}
+      className={`cart-card ${cart.status === CartStatus.DELIVERING ? 'status-delivering' : ''} ${cart.status === CartStatus.FAULT ? 'status-fault' : ''}`}
       bordered
       styles={{ body: { padding: 20 } }}
     >
