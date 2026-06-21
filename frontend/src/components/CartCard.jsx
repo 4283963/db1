@@ -1,14 +1,19 @@
 import { Card, Tag, Progress, Tooltip } from 'antd'
 import {
   EnvironmentOutlined,
-  BatteryFilled,
   ThunderboltOutlined,
   CarOutlined,
   WarningOutlined,
-  CoffeeOutlined
+  CoffeeOutlined,
+  InfoCircleOutlined
 } from '@ant-design/icons'
 import { CartStatus, CartStatusLabels, CartStatusColors } from '../types'
 import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import 'dayjs/locale/zh-cn'
+
+dayjs.extend(relativeTime)
+dayjs.locale('zh-cn')
 
 const statusIcons = {
   [CartStatus.IDLE]: <CoffeeOutlined />,
@@ -65,7 +70,7 @@ export default function CartCard({ cart }) {
       <div style={{ marginBottom: 16 }}>
         <div className="stat-item" style={{ marginBottom: 8 }}>
           <span className="stat-label">
-            <BatteryFilled style={{ marginRight: 4, color: getBatteryColor(cart.batteryLevel) }} /> 电量
+            <span style={{ marginRight: 4 }}>🔋</span> 电量
           </span>
           <span className="stat-value" style={{ color: getBatteryColor(cart.batteryLevel), fontWeight: 600 }}>
             {cart.batteryLevel}%
